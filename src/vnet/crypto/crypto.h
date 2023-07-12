@@ -132,10 +132,17 @@ typedef struct
 #define VNET_CRYPTO_OP_FLAG_HMAC_CHECK (1 << 1)
   u32 key_index;
   u32 len;
+#if ENABLE_AD /* EnclaveVpn: AD-merging */
+  u32 integ_key_index;
+  u32 integ_len;
+#endif
   u16 aad_len;
   u8 digest_len, tag_len;
   u8 *iv;
   u8 *src;
+#if ENABLE_AD /* EnclaveVpn: AD-merging */
+  u8 *integ_src;
+#endif
   u8 *dst;
   u8 *aad;
   u8 *tag;
@@ -225,6 +232,9 @@ vnet_crypto_op_init (vnet_crypto_op_t * op, vnet_crypto_op_id_t type)
   op->op = type;
   op->flags = 0;
   op->key_index = ~0;
+#if ENABLE_AD /* EnclaveVpn: AD-merging */ 
+  op->integ_key_index  = ~0;
+#endif
 }
 
 static_always_inline vnet_crypto_op_type_t

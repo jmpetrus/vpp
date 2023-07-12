@@ -135,7 +135,9 @@ esp_decrypt_inline (vlib_main_t * vm,
 
   vlib_get_buffers (vm, from, b, n_left);
   vec_reset_length (ptd->crypto_ops);
+#if !ENABLE_AD
   vec_reset_length (ptd->integ_ops);
+#endif
   clib_memset_u16 (nexts, -1, n_left);
 
   while (n_left > 0)
@@ -212,6 +214,7 @@ esp_decrypt_inline (vlib_main_t * vm,
       current_sa_pkts += 1;
       current_sa_bytes += pd->current_length;
 
+#if !ENABLE_AD
       if (PREDICT_TRUE (sa0->integ_op_id != VNET_CRYPTO_OP_NONE))
 	{
 	  vnet_crypto_op_t *op;
@@ -237,15 +240,45 @@ esp_decrypt_inline (vlib_main_t * vm,
 	      op->digest += sz;
 	    }
 	}
+#endif
 
+#if !ENABLE_AD
       payload += esp_sz;
       len -= esp_sz;
+#endif
 
       if (sa0->crypto_enc_op_id != VNET_CRYPTO_OP_NONE)
 	{
 	  vnet_crypto_op_t *op;
 	  vec_add2_aligned (ptd->crypto_ops, op, 1, CLIB_CACHE_LINE_BYTES);
 	  vnet_crypto_op_init (op, sa0->crypto_dec_op_id);
+
+#if ENABLE_AD 
+          if (PREDICT_TRUE (sa0->integ_op_id != VNET_CRYPTO_OP_NONE))
+	  {
+             op->integ_key_index = sa0->integ_key_index;
+	     op->integ_src = payload;
+	     op->digest = payload + len;
+	     op->digest_len = cpd.icv_sz;
+	     op->integ_len = len;
+
+	     if (ipsec_sa_is_set_USE_ESN (sa0))
+	       {
+	         /* shift ICV by 4 bytes to insert ESN */
+	         u32 seq_hi = clib_host_to_net_u32 (sa0->seq_hi);
+	         u8 tmp[ESP_MAX_ICV_SIZE], sz = sizeof (sa0->seq_hi);
+	         clib_memcpy_fast (tmp, payload + len, ESP_MAX_ICV_SIZE);
+	         clib_memcpy_fast (payload + len, &seq_hi, sz);
+	         clib_memcpy_fast (payload + len + sz, tmp, ESP_MAX_ICV_SIZE);
+	         op->integ_len += sz;
+	         op->digest += sz;
+	       }
+          }
+
+          payload += esp_sz;
+          len -= esp_sz;
+#endif
+
 	  op->key_index = sa0->crypto_key_index;
 	  op->iv = payload;
 
@@ -278,6 +311,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 	      op->tag = payload + len;
 	      op->tag_len = 16;
 	    }
+
 	  op->src = op->dst = payload += cpd.iv_sz;
 	  op->len = len - cpd.iv_sz;
 	  op->user_data = b - bufs;
@@ -295,6 +329,7 @@ esp_decrypt_inline (vlib_main_t * vm,
 				   current_sa_index, current_sa_pkts,
 				   current_sa_bytes);
 
+#if !ENABLE_AD
   if ((n = vec_len (ptd->integ_ops)))
     {
       vnet_crypto_op_t *op = ptd->integ_ops;
@@ -316,6 +351,8 @@ esp_decrypt_inline (vlib_main_t * vm,
 	  op++;
 	}
     }
+#endif
+
   if ((n = vec_len (ptd->crypto_ops)))
     {
       vnet_crypto_op_t *op = ptd->crypto_ops;

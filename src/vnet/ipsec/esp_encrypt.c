@@ -487,11 +487,27 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
+#if ENABLE_AD 
+	      op->integ_src = payload - iv_sz - sizeof (esp_header_t);
+	      op->digest = payload + payload_len - icv_sz;
+	      op->integ_key_index = sa0->integ_key_index;
+	      op->digest_len = icv_sz;
+	      op->integ_len = payload_len - icv_sz + iv_sz + sizeof (esp_header_t);
+
+              if (ipsec_sa_is_set_USE_ESN (sa0))
+	        {
+	          u32 seq_hi = clib_net_to_host_u32 (sa0->seq_hi);
+	          clib_memcpy_fast (op->digest, &seq_hi, sizeof (seq_hi));
+	          op->integ_len += sizeof (seq_hi);
+	        }
+
+#endif
 	      op->iv = payload - iv_sz;
 	      op->flags = VNET_CRYPTO_OP_FLAG_INIT_IV;
 	    }
 	}
 
+#if !ENABLE_AD 
       if (sa0->integ_op_id)
 	{
 	  vnet_crypto_op_t *op;
@@ -510,6 +526,7 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      op->len += sizeof (seq_hi);
 	    }
 	}
+#endif
 
       vlib_buffer_advance (b[0], 0LL - hdr_len);
 
@@ -539,7 +556,10 @@ esp_encrypt_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				   current_sa_index, current_sa_packets,
 				   current_sa_bytes);
   esp_process_ops (vm, node, ptd->crypto_ops, bufs, nexts);
+
+#if !ENABLE_AD 
   esp_process_ops (vm, node, ptd->integ_ops, bufs, nexts);
+#endif
 
   vlib_node_increment_counter (vm, node->node_index,
 			       ESP_ENCRYPT_ERROR_RX_PKTS, frame->n_vectors);

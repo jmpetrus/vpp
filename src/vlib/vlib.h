@@ -79,6 +79,18 @@ typedef u32 vlib_log_class_t;
 #include <vlib/buffer_node.h>
 #include <vppinfra/pcap_funcs.h>
 
+/* constant to activate AD-merging */
+#define ENABLE_AD 1
+
+/* constant to activate time measurement mode */
+#define TIME_MEASUREMENT 0
+
+/* constant to activate cli debug msg for successful operation */
+#define DEBUG_SUCCEED 0
+
+/* constant to activate clear-and-seal */
+#define CLEAR_AND_SEAL 1
+
 #endif /* included_vlib_h */
 
 /*

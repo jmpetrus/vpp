@@ -53,6 +53,8 @@ typedef struct
   u8 udp_encap;
   u32 tx_table_id;
   u32 salt;
+  u32 salt_local;
+  u32 salt_remote;
 } ipsec_add_del_tunnel_args_t;
 
 /* *INDENT-OFF* */
