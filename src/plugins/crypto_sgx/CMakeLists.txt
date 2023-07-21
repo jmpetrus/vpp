@@ -15,7 +15,7 @@ if(NOT OPENSSL_FOUND)
   return()
 endif()
 
-add_custom_target(epp ALL
+add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/Enclave_u.c ${CMAKE_CURRENT_SOURCE_DIR}/Enclave_u.h
   COMMAND "make"
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/epp
   COMMENT "Build EnclaveESP"
