@@ -14,7 +14,7 @@
 ##############################################################################
 # vpp an external app that uses the SGX SDK
 ##############################################################################
-add_custom_target(eke ALL
+add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/Enclave_u.c ${CMAKE_CURRENT_SOURCE_DIR}/Enclave_u.h
   COMMAND "make"
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/eke
   COMMENT "Build EnclaveIKE"
